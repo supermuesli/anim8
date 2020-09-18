@@ -4,7 +4,7 @@ anim8 is a simple animation/storyboarding tool written in go. You will need Open
 
 ## Usage
 - start sketching your first frame
-- now press **SPACE**
+- now press **SPACE**, it will store the frame in a buffer (which will become the animation)
 - you will notice that the previous frame is still showing with 30% opacity, as a guide for the next frame
 - continue collecting frames until you think you have enough
 - if you made a mistake and need to erase from the canvas, press **E**
