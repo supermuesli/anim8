@@ -11,7 +11,11 @@ or if *make* is not an option for you, just do:
 ``` 
 $ go build -o $(GOPATH)/bin/anim8 cmd/anim8/main.go
 ```
-and make sure $(GOPATH)/bin is in your *PATH*.
+and make sure $(GOPATH)/bin is in your *PATH*. To run the tool, you should now be able to do
+``` 
+$ anim8
+```
+and get at it!
 
 ## Usage
 - start sketching your first frame
