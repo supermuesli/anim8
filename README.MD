@@ -2,6 +2,17 @@
 ---
 anim8 is a simple animation/storyboarding tool written in go. You will need OpenGL in order to run this.
 
+## Build
+Simply do
+```  
+$ make
+```
+or if *make* is not an option for you, just do:
+``` 
+$ go build -o $(GOPATH)/bin/anim8 cmd/anim8/main.go
+```
+and make sure $(GOPATH)/bin is in your *PATH*.
+
 ## Usage
 - start sketching your first frame
 - now press **SPACE**, it will store the frame in a buffer (which will become the animation)
@@ -11,5 +22,8 @@ anim8 is a simple animation/storyboarding tool written in go. You will need Open
 - if you need to adjust the brush size, use your **mouse wheels** to do so
 - if you want to see how your frames look animated, press **P**
 - if you want to dump your animation as a set of PNGs, press **ENTER**
-- if you want to start sketching the next scene, press **R** and start collectin frames again
+- if you want to start sketching the next scene, press **R** and start collecting frames again
 - that's pretty much the intended workflow
+
+## Showcase
+- TODO
