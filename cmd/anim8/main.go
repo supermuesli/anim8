@@ -13,8 +13,19 @@ func run() {
 	width := float64(bounds.Dx())*0.9
 	height := float64(bounds.Dy())*0.9
 
+	// get bindata stuff
+	brush, err := Asset("data/brush.png")
+	if err != nil {
+		panic(err)
+	}
+
+	font, err := Asset("data/ka1.ttf")
+	if err != nil {
+		panic(err)
+	}
+
 	// initialize new canvas
-	canvas := render.NewCanvas(width, height)
+	canvas := render.NewCanvas(width, height, brush, font)
 
 	// render loop
 	for !canvas.Win.Closed() {

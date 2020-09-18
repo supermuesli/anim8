@@ -3,6 +3,7 @@ package render
 import (
 	"fmt"
 	"time"
+	"os"
 
 	"github.com/faiface/pixel"
 	"github.com/faiface/pixel/text"
@@ -16,6 +17,7 @@ type GUI struct {
 	atlas *text.Atlas
 	brush *text.Text
 	frameNr *text.Text
+	sceneName *text.Text
 }
 
 // Canvas 
@@ -46,7 +48,7 @@ type Canvas struct {
 }
 
 // NewCanvas prepares a new Canvas
-func NewCanvas(width float64, height float64) *Canvas {
+func NewCanvas(width float64, height float64, brushFile []byte, fontFile []byte) *Canvas {
 	cfg := pixelgl.WindowConfig {
 		Title:  "anim8",
 		Bounds: pixel.R(0, 0, width, height),
@@ -61,15 +63,23 @@ func NewCanvas(width float64, height float64) *Canvas {
 	win.Canvas().SetSmooth(true)
 
 	// gui
+	face, err := loadTTF(fontFile, 52)
+	if err != nil {
+		panic(err)
+	}
+
+	screenNameAtlas := text.NewAtlas(face, text.ASCII)
+
 	textAtlas := text.NewAtlas(basicfont.Face7x13, text.ASCII)
 	gui := &GUI {
 		textAtlas,
 		text.New(pixel.V(width - 250, height - 30), textAtlas),
 		text.New(pixel.V(width/2 - 50, 20), textAtlas),
+		text.New(pixel.V(width/2 - 350, height/2), screenNameAtlas),
 	}
 
 	// brush
-	spritesheet, err := loadPicture("brush.png")
+	spritesheet, err := loadPicture(brushFile)
 	if err != nil {
 		panic(err)
 	}
@@ -96,6 +106,7 @@ func NewCanvas(width float64, height float64) *Canvas {
 
 	canvas.gui.brush.Color = colornames.Red
 	canvas.gui.frameNr.Color = colornames.Red
+	canvas.gui.sceneName.Color = colornames.Red
 
 	return &canvas
 }
@@ -124,6 +135,16 @@ func (canvas *Canvas) Clear() {
 		canv := canvas.Win.Canvas()
 		canv.SetPixels(canvas.decay)
 	}
+}
+
+
+// Dump saves the animation as a set of PNGs using `sceneName` as the naming prefix
+func (canvas *Canvas) Dump(sceneName string) {
+	if _, err := os.Stat(sceneName); os.IsNotExist(err) {
+		os.Mkdir(sceneName, 0700)
+	}
+	
+	fmt.Println(sceneName)
 }
 
 // Poll user input
@@ -177,12 +198,12 @@ func (canvas *Canvas) Poll() {
 		// remember previous view
 		pixels := canv.Pixels()
 		
-		// show animation at 30 FPS
-		fps30 := time.Tick(time.Second/10)
+		// show animation at 15 FPS
+		fps15 := time.Tick(time.Second/15)
 		for i := 0; i < len(canvas.frames); i++ {
 			canv.SetPixels(canvas.frames[i])
 			canvas.Win.Update()
-			<-fps30
+			<-fps15
 		}
 		
 		// return to previous view
@@ -194,6 +215,28 @@ func (canvas *Canvas) Poll() {
 		canvas.frames = [][]uint8{}
 		canvas.frameNr = 1
 		canvas.decay = nil
+	}
+
+	if canvas.Win.JustPressed(pixelgl.KeyD) {
+		canvas.batch.Clear()
+	}
+
+	if canvas.Win.JustPressed(pixelgl.KeyEnter) {
+		// remember previous frame state
+		canv := canvas.Win.Canvas()
+		pixels := canv.Pixels()
+		sceneName := ""
+		for {
+			sceneName = sceneName + canvas.Win.Typed()
+			canvas.gui.sceneName.WriteString(canvas.Win.Typed())
+			canv.SetPixels(pixels)
+			canvas.gui.sceneName.Draw(canvas.Win, pixel.IM)
+			canvas.Win.Update()
+			if canvas.Win.JustPressed(pixelgl.KeyEnter) {
+				break
+			}
+		}
+		canvas.Dump(sceneName)
 	}
 
 	// adjust brush size at mousescroll

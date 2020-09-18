@@ -2,4 +2,4 @@
 .PHONY: build
 
 build:
-	go build -o $(GOPATH)/bin/anim8 cmd/anim8/main.go
+	go build -o $(GOPATH)/bin/anim8 cmd/anim8/main.go cmd/anim8/bindata.go
