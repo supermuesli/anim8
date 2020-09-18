@@ -15,7 +15,7 @@ and make sure $(GOPATH)/bin is in your *PATH*. To run the tool, you should now b
 ``` 
 $ anim8
 ```
-and get at it!
+and start getting at it!
 
 ## Usage
 - start sketching your first frame
