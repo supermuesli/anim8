@@ -22,9 +22,10 @@ $ anim8
 ## Usage
 - start sketching your first frame
 - now press **SPACE**, it will store the frame in a buffer (which will become the animation)
-- you will notice that the previous frame is still showing with 30% opacity, as a guide for the next frame
+- you will notice that the previous frame is still showing with 30% opacity, as a guide for the next frame, meaning it won't be stored in the animation buffer
+- you can also press **C** and copy the previous frame to the current frame
+- you can then press **E** to erase from the canvas using your cursor and redraw the bits of the frame that actually change
 - continue collecting frames until you think you have enough
-- if you made a mistake and need to erase from the canvas using your cursor, press **E**
 - if you want to delete the entire frame, press **D**
 - if you need to adjust the brush size, use your **mouse wheels** to do so
 - if you want to see how your frames look animated, press **P**
