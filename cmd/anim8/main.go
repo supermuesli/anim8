@@ -10,8 +10,8 @@ import (
 func run() {
 	// get display dimensions
 	bounds := screenshot.GetDisplayBounds(0)
-	width := float64(bounds.Dx())*0.95
-	height := float64(bounds.Dy())*0.95
+	width := float64(bounds.Dx())
+	height := float64(bounds.Dy())
 
 	// get bindata stuff
 	brush, err := Asset("data/brush.png")
