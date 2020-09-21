@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"time"
 	"os"
+	"image"
+	"image/png"
 
 	"github.com/faiface/pixel"
 	"github.com/faiface/pixel/text"
@@ -31,6 +33,7 @@ type GUI struct {
 	brush *text.Text
 	frameNr *text.Text
 	sceneName *text.Text
+	replayFPS *text.Text
 	brushBatch *pixel.Batch
 }
 
@@ -47,6 +50,7 @@ type Canvas struct {
 
 	// set FPS
 	FPS <-chan time.Time
+	replayFPS int
 
 	// batch/sprite attributes
 	batch *pixel.Batch
@@ -103,14 +107,12 @@ func NewCanvas(width float64, height float64, brushFile []byte, fontFile []byte)
 		text.New(pixel.V(width - 250, height - 30), textAtlas),
 		text.New(pixel.V(width/2 - 50, 20), textAtlas),
 		text.New(pixel.V(width/2 - 350, height/2), screenNameAtlas),
+		text.New(pixel.V(30, height - 30), textAtlas),
 		pixel.NewBatch(&pixel.TrianglesData{}, spritesheet),
 	}
 
 
-	batchContainer := pixel.TrianglesData{}
-	prevBatchContainer := pixel.TrianglesData{}
-	batch := pixel.NewBatch(&batchContainer, spritesheet)
-	prevBatch := *pixel.NewBatch(&prevBatchContainer, spritesheet)
+	batch := pixel.NewBatch(&pixel.TrianglesData{}, spritesheet)
 	brush := pixel.NewSprite(spritesheet, spritesheet.Bounds())
 
 	canvas := Canvas {
@@ -120,8 +122,9 @@ func NewCanvas(width float64, height float64, brushFile []byte, fontFile []byte)
 		height,
 		gui,
 		time.Tick(time.Second / 120),
+		15,
 		batch,
-		prevBatch,
+		*batch,
 		brush,
 		make(map[pixel.Vec]float64),
 		[][]uint8{},
@@ -134,7 +137,7 @@ func NewCanvas(width float64, height float64, brushFile []byte, fontFile []byte)
 	canvas.gui.brush.Color = colornames.Red
 	canvas.gui.frameNr.Color = colornames.Red
 	canvas.gui.sceneName.Color = colornames.Red
-
+	canvas.gui.replayFPS.Color = colornames.Red
 
 	return &canvas
 }
@@ -198,7 +201,20 @@ func (canvas *Canvas) Dump(sceneName string) {
 	}
 	
 	// TODO
-	fmt.Println(sceneName)
+	for i := 0; i < len(canvas.frames); i++ {
+		img := image.NewRGBA(image.Rectangle{image.Point{0, 0}, image.Point{int(canvas.width), int(canvas.height)}})
+		img.Pix = canvas.frames[i]
+
+		file, err := os.Create(fmt.Sprintf(sceneName + "/%s%06d.png", sceneName, i))
+		if err != nil {
+			panic(err)
+		}
+
+		if err := png.Encode(file, img); err != nil {
+			file.Close()
+			panic(err)
+		}
+	}
 }
 
 // Poll user input
@@ -221,7 +237,7 @@ func (canvas *Canvas) Poll() {
 
 	// save canvas to animation buffer at keypress SPACE
 	if canvas.Win.JustPressed(pixelgl.KeySpace) {
-		// cache batch incase user want to copy the previous sketch
+		// cache batch incase user wants to reuse the previous sketch
 		canvas.prevBatch = *canvas.batch
 
 		// clear screen except for canvas
@@ -251,20 +267,46 @@ func (canvas *Canvas) Poll() {
 	if canvas.Win.JustPressed(pixelgl.KeyP) {
 		
 		canv := canvas.Win.Canvas()
-
-		// remember previous view
-		pixels := canv.Pixels()
 		
 		// show animation at 15 FPS
-		fps15 := time.Tick(time.Second/15)
+		fps15 := time.Tick(time.Second/time.Duration(canvas.replayFPS))
 		for i := 0; i < len(canvas.frames); i++ {
 			canv.SetPixels(canvas.frames[i])
 			canvas.Win.Update()
 			<-fps15
 		}
-		
-		// return to previous view
-		canv.SetPixels(pixels)
+	}
+
+	if canvas.Win.JustPressed(pixelgl.KeyL) {
+
+		canv := canvas.Win.Canvas()
+		skipped := false
+
+		for {
+			// show animation at 15 FPS
+			fps15 := time.Tick(time.Second/time.Duration(canvas.replayFPS))
+			for i := 0; i < len(canvas.frames); i++ {
+				canv.SetPixels(canvas.frames[i])
+				canvas.Win.Update()
+				if canvas.Win.JustPressed(pixelgl.KeyL) {
+					skipped = true
+					break
+				}	
+				if canvas.Win.Pressed(pixelgl.KeyUp) {
+					canvas.replayFPS = canvas.replayFPS + 1
+				}
+				if canvas.Win.Pressed(pixelgl.KeyDown) {
+					canvas.replayFPS = canvas.replayFPS - 1
+					if canvas.replayFPS < 5 {
+						canvas.replayFPS = 5
+					}
+				}
+				<-fps15
+			}
+			if skipped || canvas.Win.JustPressed(pixelgl.KeyL) {
+				break
+			}
+		}		
 	}
 
 	// load previous batch at keypress C
@@ -272,11 +314,32 @@ func (canvas *Canvas) Poll() {
 		canvas.decay = nil
 		canvas.batch = &canvas.prevBatch
 		// TODO
-		fmt.Println(canvas.batch)
+		fmt.Println(*canvas.batch)
+	}
+
+	// move canvas to certain directon at keypresses up, down, left, right
+	if canvas.Win.JustPressed(pixelgl.KeyUp) {
+		// TODO
+		canvas.batch.SetMatrix(pixel.IM.Moved(pixel.V(0, 1)))
+	}
+
+	if canvas.Win.JustPressed(pixelgl.KeyDown) {
+		// TODO
+		canvas.batch.SetMatrix(pixel.IM.Moved(pixel.V(0, -1)))	
+	}
+
+	if canvas.Win.JustPressed(pixelgl.KeyLeft) {
+		// TODO
+		canvas.batch.SetMatrix(pixel.IM.Moved(pixel.V(-1, 0)))	
+	}
+
+	if canvas.Win.JustPressed(pixelgl.KeyRight) {
+		// TODO
+		canvas.batch.SetMatrix(pixel.IM.Moved(pixel.V(1, 0)))
 	}
 
 	// reset animation at keypress R
-	if canvas.Win.JustPressed(pixelgl.KeyR) {
+	if canvas.Win.JustPressed(pixelgl.KeyS) {
 		canvas.frames = [][]uint8{}
 		canvas.frameNr = 1
 		canvas.decay = nil
@@ -320,6 +383,7 @@ func (canvas *Canvas) Poll() {
 	// update GUI
 	fmt.Fprintf(canvas.gui.brush, "Brush\nSize\t%.0f\nType\t%s", canvas.brushSize, canvas.BrushType())
 	fmt.Fprintf(canvas.gui.frameNr, "Frame Nr. %d", canvas.frameNr)
+	fmt.Fprintf(canvas.gui.replayFPS, "Replay-FPS\t%d", canvas.replayFPS)
 }
 
 // Draw renders the canvas onto the window
@@ -337,6 +401,8 @@ func (canvas *Canvas) Draw() {
 	canvas.gui.frameNr.Draw(canvas.Win, pixel.IM.Scaled(canvas.gui.frameNr.Orig, 1.4))
 	canvas.gui.brush.Clear()
 	canvas.gui.frameNr.Clear()
+	canvas.gui.replayFPS.Draw(canvas.Win, pixel.IM.Scaled(canvas.gui.replayFPS.Orig, 1.4))
+	canvas.gui.replayFPS.Clear()
 
 	// update window
 	canvas.Win.Update()
