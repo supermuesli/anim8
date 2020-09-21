@@ -25,7 +25,7 @@ $ anim8
 - you will notice that the previous frame is still showing with 30% opacity, as a guide for the next frame, meaning it won't be stored in the scene
 - you can also press **C** *(copy)* and copy the previous frame, overwriting the current frame
 - using the arrow keys you can shift the frame in a certain direction
-- you can press **E** to erase from the canvas using your cursor, then press **E** (erase) again to return to the brush tool 
+- you can press **E** (erase) to erase from the canvas using your cursor, then press **E** again to return to the brush tool 
 - if you want to delete the entire frame, press **D** *(delete)*
 - if you need to adjust the brush size, use your **mouse wheels** to do so
 - continue collecting frames until you think you have enough

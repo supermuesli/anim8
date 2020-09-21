@@ -200,7 +200,6 @@ func (canvas *Canvas) Dump(sceneName string) {
 		os.Mkdir(sceneName, 0700)
 	}
 	
-	// TODO
 	for i := 0; i < len(canvas.frames); i++ {
 		img := image.NewRGBA(image.Rectangle{image.Point{0, 0}, image.Point{int(canvas.width), int(canvas.height)}})
 		img.Pix = canvas.frames[i]
