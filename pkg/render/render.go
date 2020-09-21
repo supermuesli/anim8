@@ -33,7 +33,7 @@ type GUI struct {
 	brush *text.Text
 	frameNr *text.Text
 	sceneName *text.Text
-	replayFPS *text.Text
+	playbackFPS *text.Text
 	brushBatch *pixel.Batch
 }
 
@@ -50,11 +50,12 @@ type Canvas struct {
 
 	// set FPS
 	FPS <-chan time.Time
-	replayFPS int
+	playbackFPS int
 
 	// batch/sprite attributes
 	batch *pixel.Batch
 	prevBatch pixel.Batch
+	batches []pixel.Batch
 	brush *pixel.Sprite
 	brushBuffer map[pixel.Vec]float64
 	
@@ -125,6 +126,7 @@ func NewCanvas(width float64, height float64, brushFile []byte, fontFile []byte)
 		15,
 		batch,
 		*batch,
+		[]pixel.Batch{},
 		brush,
 		make(map[pixel.Vec]float64),
 		[][]uint8{},
@@ -137,7 +139,7 @@ func NewCanvas(width float64, height float64, brushFile []byte, fontFile []byte)
 	canvas.gui.brush.Color = colornames.Red
 	canvas.gui.frameNr.Color = colornames.Red
 	canvas.gui.sceneName.Color = colornames.Red
-	canvas.gui.replayFPS.Color = colornames.Red
+	canvas.gui.playbackFPS.Color = colornames.Red
 
 	return &canvas
 }
@@ -268,7 +270,7 @@ func (canvas *Canvas) Poll() {
 		canv := canvas.Win.Canvas()
 		
 		// show animation at 15 FPS
-		fps15 := time.Tick(time.Second/time.Duration(canvas.replayFPS))
+		fps15 := time.Tick(time.Second/time.Duration(canvas.playbackFPS))
 		for i := 0; i < len(canvas.frames); i++ {
 			canv.SetPixels(canvas.frames[i])
 			canvas.Win.Update()
@@ -283,7 +285,7 @@ func (canvas *Canvas) Poll() {
 
 		for {
 			// show animation at 15 FPS
-			fps15 := time.Tick(time.Second/time.Duration(canvas.replayFPS))
+			fps15 := time.Tick(time.Second/time.Duration(canvas.playbackFPS))
 			for i := 0; i < len(canvas.frames); i++ {
 				canv.SetPixels(canvas.frames[i])
 				canvas.Win.Update()
@@ -292,12 +294,12 @@ func (canvas *Canvas) Poll() {
 					break
 				}	
 				if canvas.Win.Pressed(pixelgl.KeyUp) {
-					canvas.replayFPS = canvas.replayFPS + 1
+					canvas.playbackFPS = canvas.playbackFPS + 1
 				}
 				if canvas.Win.Pressed(pixelgl.KeyDown) {
-					canvas.replayFPS = canvas.replayFPS - 1
-					if canvas.replayFPS < 5 {
-						canvas.replayFPS = 5
+					canvas.playbackFPS = canvas.playbackFPS - 1
+					if canvas.playbackFPS < 5 {
+						canvas.playbackFPS = 5
 					}
 				}
 				<-fps15
@@ -382,7 +384,7 @@ func (canvas *Canvas) Poll() {
 	// update GUI
 	fmt.Fprintf(canvas.gui.brush, "Brush\nSize\t%.0f\nType\t%s", canvas.brushSize, canvas.BrushType())
 	fmt.Fprintf(canvas.gui.frameNr, "Frame Nr. %d", canvas.frameNr)
-	fmt.Fprintf(canvas.gui.replayFPS, "Replay-FPS\t%d", canvas.replayFPS)
+	fmt.Fprintf(canvas.gui.playbackFPS, "Playback-FPS\t%d", canvas.playbackFPS)
 }
 
 // Draw renders the canvas onto the window
@@ -400,8 +402,8 @@ func (canvas *Canvas) Draw() {
 	canvas.gui.frameNr.Draw(canvas.Win, pixel.IM.Scaled(canvas.gui.frameNr.Orig, 1.4))
 	canvas.gui.brush.Clear()
 	canvas.gui.frameNr.Clear()
-	canvas.gui.replayFPS.Draw(canvas.Win, pixel.IM.Scaled(canvas.gui.replayFPS.Orig, 1.4))
-	canvas.gui.replayFPS.Clear()
+	canvas.gui.playbackFPS.Draw(canvas.Win, pixel.IM.Scaled(canvas.gui.playbackFPS.Orig, 1.4))
+	canvas.gui.playbackFPS.Clear()
 
 	// update window
 	canvas.Win.Update()
