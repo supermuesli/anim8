@@ -154,24 +154,25 @@ func (canvas *Canvas) Paint() {
 	// first draw as usual
 	canvas.brush.Draw(canvas.batch, pixel.IM.Scaled(pixel.ZV, canvas.brushSize/20).Moved(now))
 
-	// now if the mouse was moved, interpolate brush strokes inbetween
-
 	// delta
 	d := now.Sub(prev)
 
-	// how many filling points to consider, depending on mouse delta
+	// how many brush's would fit into the distance that the mouse moved since the last tick
 	points := d.Len()/(4*canvas.brushSize/20)
 	if points > 16.0 {
 		points = 16.0
 	}
+
+	// how many brush strokes we want to fit into that distance
+	strokes := 3.0
 	
 	// scaled delta
-	delta := d.Scaled(1/points)
+	delta := d.Scaled(1/(strokes*points))
 
 	// don't malloc a pixel.V every time
 	paintPos := prev
 
-	for i := float64(0); i < points; i = i+1 {
+	for i := float64(0); i < strokes*points; i = i+1 {
 		paintPos = paintPos.Add(delta)
 		canvas.brush.Draw(canvas.batch, pixel.IM.Scaled(pixel.ZV, canvas.brushSize/20).Moved(paintPos))
 	}
