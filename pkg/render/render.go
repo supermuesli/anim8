@@ -63,6 +63,8 @@ type Canvas struct {
 	// painting/polling/framebuffer attributes
 	frames [][]uint8
 	decay []uint8
+	snapshots []pixel.Batch
+	curSnapShot int
 
 	// canvas attributes
 	erasing bool
@@ -133,6 +135,8 @@ func NewCanvas(width float64, height float64, brushFile []byte, fontFile []byte)
 		make(map[pixel.Vec]float64),
 		[][]uint8{},
 		nil,
+		[]pixel.Batch{*batch},
+		0,
 		false,
 		1,
 	}
@@ -141,16 +145,17 @@ func NewCanvas(width float64, height float64, brushFile []byte, fontFile []byte)
 	canvas.gui.frameNr.Color = colornames.Red
 	canvas.gui.sceneName.Color = colornames.Red
 	canvas.gui.playbackFPS.Color = colornames.Red
+	canvas.gui.brushBatch.SetColorMask(colornames.Gray)
 
 	return &canvas
 }
 
+func (canvas *Canvas) snapshot() {
+	canvas.snapshots = append(canvas.snapshots, *canvas.batch)
+}
+
 // Paint draws or erases at the mouseposition
-func (canvas *Canvas) Paint() {
-
-	now := canvas.Win.MousePosition()
-	prev := canvas.Win.MousePreviousPosition()
-
+func (canvas *Canvas) Paint(now pixel.Vec, prev pixel.Vec) {
 	// first draw as usual
 	canvas.brush.Draw(canvas.batch, pixel.IM.Scaled(pixel.ZV, canvas.brushSize/20).Moved(now))
 
@@ -224,7 +229,18 @@ func (canvas *Canvas) Dump(sceneName string) {
 func (canvas *Canvas) Poll() {
 	// paint at mouseclick
 	if canvas.Win.Pressed(pixelgl.MouseButtonLeft) {
-		canvas.Paint()	
+		for {
+			canvas.Paint(canvas.Win.MousePosition(), canvas.Win.MousePreviousPosition())	
+
+			// draw and poll window inputs
+			canvas.Draw()
+			if canvas.Win.JustReleased(pixelgl.MouseButtonLeft) {
+				// we can CTRL+Z to this snapshot if we want
+				canvas.snapshot()
+				break
+			}
+			<-canvas.FPS
+		}
 	}
 	
 	// go into erasing mode at keypress E
@@ -270,6 +286,7 @@ func (canvas *Canvas) Poll() {
 		canvas.batch = pixel.NewBatch(&pixel.TrianglesData{}, canvas.spritesheet)
 		canvas.curBatch = canvas.curBatch + 1
 		canvas.batches = append(canvas.batches, canvas.batch)
+		canvas.snapshots = []pixel.Batch{}
 
 		// as an aid for drawing, indicate the previous frame
 		decay := canv.Pixels()
@@ -352,32 +369,44 @@ func (canvas *Canvas) Poll() {
 
 	// load previous batch at keypress C
 	if canvas.Win.JustPressed(pixelgl.KeyC) {
-		canvas.decay = nil
-		canvas.batch = canvas.batches[len(canvas.batches)-1]
+		if len(canvas.batches) > 1 {
+			canvas.batches[len(canvas.batches)-1] = canvas.batches[len(canvas.batches)-2]
+			canvas.batch = canvas.batches[len(canvas.batches)-2]
+			canvas.snapshot()
+		} 
 	}
 
-	/*
-	// move canvas to certain directon at keypresses up, down, left, right
-	if canvas.Win.JustPressed(pixelgl.KeyUp) {
-		// TODO
-		canvas.batch.SetMatrix(pixel.IM.Moved(pixel.V(0, 1)))
-	}
+	if canvas.Win.JustPressed(pixelgl.KeyLeftShift) || canvas.Win.JustPressed(pixelgl.KeyRightShift) {
+		// move canvas to certain directon at keypresses up, down, left, right
+		for {
+			canvas.Win.UpdateInput()
+			if canvas.Win.JustReleased(pixelgl.KeyLeftShift) || canvas.Win.JustReleased(pixelgl.KeyRightShift) {
+				canvas.snapshot()
+				break
+			}
 
-	if canvas.Win.JustPressed(pixelgl.KeyDown) {
-		// TODO
-		canvas.batch.SetMatrix(pixel.IM.Moved(pixel.V(0, -1)))	
-	}
+			if canvas.Win.JustPressed(pixelgl.KeyUp) {
+				// TODO
+				canvas.batch.SetMatrix(pixel.IM.Moved(pixel.V(0, 1)))
+			}
 
-	if canvas.Win.JustPressed(pixelgl.KeyLeft) {
-		// TODO
-		canvas.batch.SetMatrix(pixel.IM.Moved(pixel.V(-1, 0)))	
-	}
+			if canvas.Win.JustPressed(pixelgl.KeyDown) {
+				// TODO
+				canvas.batch.SetMatrix(pixel.IM.Moved(pixel.V(0, -1)))	
+			}
 
-	if canvas.Win.JustPressed(pixelgl.KeyRight) {
-		// TODO
-		canvas.batch.SetMatrix(pixel.IM.Moved(pixel.V(1, 0)))
+			if canvas.Win.JustPressed(pixelgl.KeyLeft) {
+				// TODO
+				canvas.batch.SetMatrix(pixel.IM.Moved(pixel.V(-1, 0)))	
+			}
+
+			if canvas.Win.JustPressed(pixelgl.KeyRight) {
+				// TODO
+				canvas.batch.SetMatrix(pixel.IM.Moved(pixel.V(1, 0)))
+			}
+			<-canvas.FPS
+		}
 	}
-	*/
 
 	// reset animation at keypress R
 	if canvas.Win.JustPressed(pixelgl.KeyR) {
@@ -391,12 +420,14 @@ func (canvas *Canvas) Poll() {
 	if canvas.Win.JustPressed(pixelgl.KeyD) {
 		if canvas.curBatch < len(canvas.batches)-1 {
 			canvas.batches = append(canvas.batches[:canvas.curBatch], canvas.batches[canvas.curBatch+1:]...)
+			canvas.frames = append(canvas.frames[:canvas.curBatch], canvas.frames[canvas.curBatch+1:]...)
 			canvas.batch = canvas.batches[canvas.curBatch]
 		} else {
 			canvas.batch.Clear()
 		}
 		if len(canvas.batches) == 1 {
 			canvas.decay = nil
+			canvas.frames = [][]uint8{}
 		}
 	}
 
@@ -439,7 +470,7 @@ func (canvas *Canvas) Draw() {
 
 	// update GUI
 	fmt.Fprintf(canvas.gui.brush, "Brush\nSize\t%.0f\nType\t%s", canvas.brushSize, canvas.BrushType())
-	fmt.Fprintf(canvas.gui.frameNr, "Frame Nr. %d", canvas.curBatch+1)
+	fmt.Fprintf(canvas.gui.frameNr, "Frame Nr. %d/%d", canvas.curBatch+1, len(canvas.batches))
 	fmt.Fprintf(canvas.gui.playbackFPS, "Playback-FPS\t%d", canvas.playbackFPS)
 
 	// draw GUI
