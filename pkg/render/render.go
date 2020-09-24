@@ -129,8 +129,8 @@ func NewCanvas(width float64, height float64, brushFile []byte, fontFile []byte)
 		15,
 		spritesheet,
 		batch,
-		[]*pixel.Batch{},
-		-1,
+		[]*pixel.Batch{batch},
+		0,
 		brush,
 		make(map[pixel.Vec]float64),
 		[][]uint8{},
@@ -145,6 +145,7 @@ func NewCanvas(width float64, height float64, brushFile []byte, fontFile []byte)
 	canvas.gui.frameNr.Color = colornames.Red
 	canvas.gui.sceneName.Color = colornames.Red
 	canvas.gui.playbackFPS.Color = colornames.Red
+	canvas.gui.brushBatch.SetColorMask(colornames.Gray)
 
 	return &canvas
 }
@@ -282,9 +283,9 @@ func (canvas *Canvas) Poll() {
 		canvas.frames = append(canvas.frames, pixels)
 
 		// cache batch incase user wants to reuse the previous sketch
-		canvas.batches = append(canvas.batches, canvas.batch)
 		canvas.batch = pixel.NewBatch(&pixel.TrianglesData{}, canvas.spritesheet)
 		canvas.curBatch = canvas.curBatch + 1
+		canvas.batches = append(canvas.batches, canvas.batch)
 		canvas.snapshots = []pixel.Batch{}
 
 		// as an aid for drawing, indicate the previous frame
@@ -369,7 +370,7 @@ func (canvas *Canvas) Poll() {
 	// load previous batch at keypress C
 	if canvas.Win.JustPressed(pixelgl.KeyC) {
 		if len(canvas.batches) > 1 {
-			canvas.curBatch = len(canvas.batches)-1
+			canvas.batches[len(canvas.batches)-1] = canvas.batches[len(canvas.batches)-2]
 			canvas.batch = canvas.batches[len(canvas.batches)-2]
 			canvas.snapshot()
 		} 
@@ -469,7 +470,7 @@ func (canvas *Canvas) Draw() {
 
 	// update GUI
 	fmt.Fprintf(canvas.gui.brush, "Brush\nSize\t%.0f\nType\t%s", canvas.brushSize, canvas.BrushType())
-	fmt.Fprintf(canvas.gui.frameNr, "Frame Nr. %d", canvas.curBatch+1)
+	fmt.Fprintf(canvas.gui.frameNr, "Frame Nr. %d/%d", canvas.curBatch+1, len(canvas.batches))
 	fmt.Fprintf(canvas.gui.playbackFPS, "Playback-FPS\t%d", canvas.playbackFPS)
 
 	// draw GUI
