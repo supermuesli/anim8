@@ -202,6 +202,23 @@ func (canvas *Canvas) Clear() {
 	}
 }
 
+func (canvas *Canvas) buildFrame() {
+	// clear screen except for canvas
+	canvas.Win.Clear(colornames.Black)
+	canvas.batch.Draw(canvas.Win)
+	canvas.Win.Update()
+
+	// now get canvas pixels
+	canv := canvas.Win.Canvas()
+	pixels := canv.Pixels()
+
+	if canvas.curBatch < len(canvas.frames) {
+		canvas.frames[canvas.curBatch] = pixels		
+	} else {
+		// this is so we can dump the frame without GUI as a PNG later
+		canvas.frames = append(canvas.frames, pixels)
+	}
+}
 
 // Dump saves the animation as a set of PNGs using `sceneName` as the naming prefix
 func (canvas *Canvas) Dump(sceneName string) {
@@ -256,12 +273,14 @@ func (canvas *Canvas) Poll() {
 		
 	if canvas.Win.JustPressed(pixelgl.KeyLeft) {
 		if canvas.curBatch > 0 {
+			canvas.buildFrame()
 			canvas.curBatch--
 			canvas.batch = canvas.batches[canvas.curBatch]
 		}
 	}
 	if canvas.Win.JustPressed(pixelgl.KeyRight) {
 		if canvas.curBatch < len(canvas.batches) - 1 {
+			canvas.buildFrame()
 			canvas.curBatch++
 			canvas.batch = canvas.batches[canvas.curBatch]
 		}	
@@ -269,18 +288,7 @@ func (canvas *Canvas) Poll() {
 
 	// save canvas to animation buffer at keypress SPACE
 	if canvas.Win.JustPressed(pixelgl.KeySpace) {
-
-		// clear screen except for canvas
-		canvas.Win.Clear(colornames.Black)
-		canvas.batch.Draw(canvas.Win)
-		canvas.Win.Update()
-
-		// now get canvas pixels
-		canv := canvas.Win.Canvas()
-		pixels := canv.Pixels()
-
-		// this is so we can dump the frame without GUI as a PNG later
-		canvas.frames = append(canvas.frames, pixels)
+		canvas.buildFrame()
 
 		// cache batch incase user wants to reuse the previous sketch
 		canvas.batch = pixel.NewBatch(&pixel.TrianglesData{}, canvas.spritesheet)
@@ -289,7 +297,7 @@ func (canvas *Canvas) Poll() {
 		canvas.snapshots = []pixel.Batch{}
 
 		// as an aid for drawing, indicate the previous frame
-		decay := canv.Pixels()
+		decay := canvas.Win.Canvas().Pixels()
 		for i := 0; i < len(decay); i++ {
 			decay[i] = uint8(float64(decay[i]) * 0.3)
 		}
