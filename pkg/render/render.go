@@ -205,6 +205,7 @@ func (canvas *Canvas) Clear() {
 func (canvas *Canvas) buildFrame() {
 	// clear screen except for canvas
 	canvas.Win.Clear(colornames.Black)
+	canvas.batch = canvas.batches[canvas.curBatch]
 	canvas.batch.Draw(canvas.Win)
 	canvas.Win.Update()
 
